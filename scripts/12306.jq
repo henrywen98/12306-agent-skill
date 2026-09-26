@@ -64,7 +64,9 @@ def ticket_info($names; $yp; $date):
      to_station: ($names[.to_station_telecode] // .to_station_name // ""),
      from_station_telecode, to_station_telecode,
      prices: extract_prices($yp; .seat_discount_info // ""; .),
-     dw_flag: (.dw_flag | extract_dw_flags)};
+     dw_flag: (.dw_flag | extract_dw_flags),
+     # 「X月X日X点起售」「列车运行图调整,暂停发售」这类说明；正常可买（「预订」）时为 null
+     sale_note: ((.button_text_info // "") | gsub("<br/>"; "") | if . == "" or . == "预订" then null else . end)};
 
 # 输入：leftTicket/queryG 的响应；$qdate：查询日期
 def parse_tickets($qdate):
@@ -133,13 +135,14 @@ def ticket_status:
     elif . == "有" or . == "充足" then "有票"
     elif . == "无" or . == "--" or . == "" then "无票"
     elif . == "候补" then "无票需候补"
-    elif . == "*" then "未开售"
+    elif . == "*" then "暂不发售"
     else "\(.)票" end;
 
 def format_tickets_text:
   if length == 0 then "没有查询到相关车次信息" else
     "车次|出发站 -> 到达站|出发时间 -> 到达时间|历时\n"
     + (map("\(.start_train_code) \(.from_station)(telecode:\(.from_station_telecode)) -> \(.to_station)(telecode:\(.to_station_telecode)) \(.start_time) -> \(.arrive_time) 历时：\(.lishi)"
+           + (if .sale_note then "（\(.sale_note)）" else "" end)
            + (.prices | map("\n- \(.seat_name): \(.num | ticket_status) \(.price | fmt_price)元") | join(""))
            + "\n") | join(""))
   end;
@@ -149,7 +152,7 @@ def format_tickets_csv:
     "车次,出发站,到达站,出发时间,到达时间,历时,票价,特色标签\n"
     + (map("\(.start_train_code),\(.from_station)(telecode:\(.from_station_telecode)),\(.to_station)(telecode:\(.to_station_telecode)),\(.start_time),\(.arrive_time),\(.lishi),["
            + (.prices | map("\(.seat_name): \(.num | ticket_status) \(.price | fmt_price)元,") | join(""))
-           + "],\(if (.dw_flag | length) == 0 then "/" else .dw_flag | join("&") end)\n") | join(""))
+           + "],\((.dw_flag + [.sale_note // empty]) | if length == 0 then "/" else join("&") end)\n") | join(""))
   end;
 
 def format_interlines_text:
