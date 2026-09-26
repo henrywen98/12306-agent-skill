@@ -1,0 +1,4 @@
+# 车站表缓存（运行时自动生成）
+scripts/.cache/
+.DS_Store
+*.tmp
