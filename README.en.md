@@ -50,7 +50,7 @@ Without them, the agent simply asks which city you are in.
 
 ## Why hub queries matter
 
-12306's automatic transfer suggestions are limited to about a dozen plans. For Xining → Xiamen on 2026-10-02, the fastest suggested plan took 27h36m with an 8-hour night wait. Querying again with Zhengzhou as the transfer hub found a 26h11m same-station plan with a sleeper train at night. So `SKILL.md` tells the agent to also query 2–3 hubs along the way and compare.
+12306's automatic transfer suggestions are limited (12 plans for Xining → Xiamen on 2026-10-02). The fastest suggested plan took 27h36m with an 8-hour night wait. Querying again with Zhengzhou as the transfer hub found a 26h11m same-station plan with a sleeper train at night. So `SKILL.md` tells the agent to also query 2–3 hubs along the way and compare.
 
 ## Evaluation
 
