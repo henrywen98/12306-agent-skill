@@ -37,7 +37,7 @@ $S get-interline-tickets --date 2026-10-02 --from_station 西宁 --to_station �
 $S get-train-route-stations --train_code G1033 --depart_date 2026-09-27
 ```
 
-Stations accept Chinese city names, station names, or telegraph codes.
+Stations accept Chinese city names (all stations in the city), station names, or telegraph codes (that station only). When a station has the same name as its city, add 站: 上海站 is one station, 上海 is the whole city.
 
 ## Optional helpers
 

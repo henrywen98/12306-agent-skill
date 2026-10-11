@@ -50,6 +50,8 @@ check_date() {  # 不早于今天（上海时区）
   [[ ! "$1" < "$(TZ=Asia/Shanghai date +%F)" ]] || die "Error: The date cannot be earlier than today."
 }
 code_of() { [ -z "$1" ] && { echo ""; return; }; stations | jqlib --arg q "$1" -r 'station_code($q) // empty'; }
+# 写的是具体车站时输出电报码（用来筛掉同城其他车站），写城市名时输出空
+exact_of() { [ -z "$1" ] && { echo ""; return; }; stations | jqlib --arg q "$1" -r 'exact_station_code($q) // empty'; }
 
 # ---------- 参数 ----------
 TOOL="${1:-}"; shift || true
@@ -104,9 +106,10 @@ case "$TOOL" in
     jq -e '.data.result' >/dev/null 2>&1 <<<"$resp" || die "Error: Get tickets data failed. 12306 返回为空：日期超出预售期（通常只开放今天起 15 天内）或接口暂时不可用。"
     fmt="$(arg format text | tr A-Z a-z)"
     jqlib -r --arg fmt "$fmt" --arg date "$date" --arg flags "$(arg train_filter_flags)" --arg sort "$(arg sort_flag)" \
+      --arg fx "$(exact_of "$(arg from_station)")" --arg tx "$(exact_of "$(arg to_station)")" \
       --argjson e "$(arg earliest_start_time 0)" --argjson l "$(arg latest_start_time 24)" \
       --argjson rev "$(arg sort_reverse false)" --argjson n "$(arg limited_num 0)" '
-      parse_tickets($date) | filter_tickets($flags; $e; $l; $sort; $rev; $n)
+      parse_tickets($date) | filter_stations($fx; $tx) | filter_tickets($flags; $e; $l; $sort; $rev; $n)
       | if $fmt == "json" then tojson elif $fmt == "csv" then format_tickets_csv else format_tickets_text end' <<<"$resp" ;;
 
   get-interline-tickets)
@@ -119,9 +122,10 @@ case "$TOOL" in
     fi
     init_session
     n="$(arg limited_num 10)"; wz=$([ "$(arg show_wz)" = true ] && echo Y || echo N)
-    # 原版只取回 n 条就排序筛选，最快的方案可能在后面几页。设了排序/筛选/时段时多取几页（最多 50 条）
+    fx="$(exact_of "$(arg from_station)")"; tx="$(exact_of "$(arg to_station)")"
+    # 原版只取回 n 条就排序筛选，最快的方案可能在后面几页。设了排序/筛选/时段/具体车站时多取几页（最多 50 条）
     fetch="$n"
-    if [ -n "$(arg sort_flag)$(arg train_filter_flags)" ] || [ "$(arg earliest_start_time 0)" != 0 ] || [ "$(arg latest_start_time 24)" != 24 ]; then
+    if [ -n "$(arg sort_flag)$(arg train_filter_flags)$fx$tx" ] || [ "$(arg earliest_start_time 0)" != 0 ] || [ "$(arg latest_start_time 24)" != 24 ]; then
       [ "$fetch" -lt 50 ] && fetch=50
     fi
     idx=0; all='[]'
@@ -139,9 +143,10 @@ case "$TOOL" in
     done
     fmt="$(arg format text | tr A-Z a-z)"
     jqlib -r --arg fmt "$fmt" --arg flags "$(arg train_filter_flags)" --arg sort "$(arg sort_flag)" \
+      --arg fx "$fx" --arg tx "$tx" \
       --argjson e "$(arg earliest_start_time 0)" --argjson l "$(arg latest_start_time 24)" \
       --argjson rev "$(arg sort_reverse false)" --argjson n "$n" '
-      parse_interlines | filter_tickets($flags; $e; $l; $sort; $rev; $n)
+      parse_interlines | filter_stations($fx; $tx) | filter_tickets($flags; $e; $l; $sort; $rev; $n)
       | if $fmt == "json" then tojson else format_interlines_text end' <<<"$all" ;;
 
   get-train-route-stations)

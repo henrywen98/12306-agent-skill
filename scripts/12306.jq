@@ -25,6 +25,14 @@ def strip_zhan: if endswith("站") then .[:-1] else . end;
 def station_code($q):
   if ($q | test("^[A-Z]+$")) and has($q) then $q
   else name_stations[$q | strip_zhan].station_code end;
+# 12306 按电报码查询时总是返回整个城市的车站（查上海虹桥也会带回上海、上海南的车）。
+# 用户写的是具体车站时返回它的电报码，用来筛结果；写城市名（苏州、北京）返回 null，表示查全城。
+# 带「站」字的（苏州站）和电报码都算具体车站。
+def exact_station_code($q):
+  if ($q | test("^[A-Z]+$")) and has($q) then $q
+  elif ($q | endswith("站")) then station_code($q)
+  elif city_stations | has($q) then null
+  else station_code($q) end;
 
 # ---------- 余票解析 ----------
 
@@ -115,6 +123,12 @@ def match_flag($f):
     elif $f == "F" then (dw_of | index("复兴号") != null)
     elif $f == "S" then (dw_of | index("智能动车组") != null)
     else false end;
+
+# $from / $to：exact_station_code 的结果，空串表示这一端不筛（查全城）
+def filter_stations($from; $to):
+  map(select(
+    ($from == "" or (.from_station_telecode // .from_station_code) == $from)
+    and ($to == "" or (.to_station_telecode // .end_station_code) == $to)));
 
 def filter_tickets($flags; $earliest; $latest; $sort; $rev; $limit):
   (if $flags == "" then . else map(select(. as $t | any($flags | split("")[]; . as $f | $t | match_flag($f)))) end)
